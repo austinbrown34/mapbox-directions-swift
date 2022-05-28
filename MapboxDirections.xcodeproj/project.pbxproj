@@ -387,6 +387,8 @@
 		E232F8C62665173C0038CAF3 /* MapboxDirections.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = DA1A10AF1D00F8FF009F82FA /* MapboxDirections.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E232F8C9266518480038CAF3 /* Polyline.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = E232F899266513C20038CAF3 /* Polyline.xcframework */; };
 		E28E325826662B1E0030807F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28E325726662B1E0030807F /* ContentView.swift */; };
+		E900940728424D4B00024982 /* OSRM.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E900940628424D4B00024982 /* OSRM.framework */; platformFilter = ios; };
+		E900940828424D4B00024982 /* OSRM.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E900940628424D4B00024982 /* OSRM.framework */; platformFilter = ios; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		F457FA7A252B9E29007DAEB1 /* Incident.swift in Sources */ = {isa = PBXBuildFile; fileRef = F457FA79252B9E29007DAEB1 /* Incident.swift */; };
 		F457FA7B252B9E29007DAEB1 /* Incident.swift in Sources */ = {isa = PBXBuildFile; fileRef = F457FA79252B9E29007DAEB1 /* Incident.swift */; };
 		F457FA7C252B9E29007DAEB1 /* Incident.swift in Sources */ = {isa = PBXBuildFile; fileRef = F457FA79252B9E29007DAEB1 /* Incident.swift */; };
@@ -482,6 +484,17 @@
 			files = (
 				DAF08AAC25C0E96E00ABA8F3 /* MapboxDirections.framework in Embed Frameworks */,
 				E232F8AD266513FF0038CAF3 /* Polyline.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E900940928424D4B00024982 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				E900940828424D4B00024982 /* OSRM.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -614,6 +627,7 @@
 		E232F8AE2665141F0038CAF3 /* Turf.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Turf.xcframework; path = Carthage/Build/Turf.xcframework; sourceTree = "<group>"; };
 		E232F8BA266516D70038CAF3 /* OHHTTPStubs.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = OHHTTPStubs.xcframework; path = Carthage/Build/OHHTTPStubs.xcframework; sourceTree = "<group>"; };
 		E28E325726662B1E0030807F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		E900940628424D4B00024982 /* OSRM.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OSRM.framework; path = Frameworks/OSRM.framework; sourceTree = "<group>"; };
 		F457FA79252B9E29007DAEB1 /* Incident.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Incident.swift; sourceTree = "<group>"; };
 		F4CF2C562523B66300A6D0B6 /* TollCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TollCollection.swift; sourceTree = "<group>"; };
 		F4D785EE1DDD82C100FF4665 /* RouteStepTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RouteStepTests.swift; sourceTree = "<group>"; };
@@ -664,6 +678,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E232F8B4266516950038CAF3 /* Polyline.xcframework in Frameworks */,
+				E900940728424D4B00024982 /* OSRM.framework in Frameworks */,
 				E232F8B5266516950038CAF3 /* Turf.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -784,6 +799,7 @@
 		C5AD8656202E24F400BF47D5 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				E900940628424D4B00024982 /* OSRM.framework */,
 				E232F8BA266516D70038CAF3 /* OHHTTPStubs.xcframework */,
 				E232F8AE2665141F0038CAF3 /* Turf.xcframework */,
 				E232F899266513C20038CAF3 /* Polyline.xcframework */,
@@ -1146,6 +1162,7 @@
 				DA6C9D851CAE442B00094FBC /* Headers */,
 				DA6C9D861CAE442B00094FBC /* Resources */,
 				7AC435C54F754F3C6A047D02 /* Frameworks */,
+				E900940928424D4B00024982 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -2174,7 +2191,10 @@
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 95;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks",
+				);
 				INFOPLIST_FILE = Sources/MapboxDirections/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -2202,7 +2222,10 @@
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 95;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks",
+				);
 				INFOPLIST_FILE = Sources/MapboxDirections/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = (
