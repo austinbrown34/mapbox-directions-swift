@@ -12,18 +12,18 @@ public let MBDirectionsErrorDomain = "com.mapbox.directions.ErrorDomain"
 /// The user agent string for any HTTP requests performed directly within this library.
 let userAgent: String = {
     var components: [String] = []
-    
+
     if let appName = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? Bundle.main.infoDictionary?["CFBundleIdentifier"] as? String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         components.append("\(appName)/\(version)")
     }
-    
+
     let libraryBundle: Bundle? = Bundle(for: Directions.self)
-    
+
     if let libraryName = libraryBundle?.infoDictionary?["CFBundleName"] as? String, let version = libraryBundle?.infoDictionary?["CFBundleShortVersionString"] as? String {
         components.append("\(libraryName)/\(version)")
     }
-    
+
     // `ProcessInfo().operatingSystemVersionString` can replace this when swift-corelibs-foundaton is next released:
     // https://github.com/apple/swift-corelibs-foundation/blob/main/Sources/Foundation/ProcessInfo.swift#L104-L202
     let system: String
@@ -42,7 +42,7 @@ let userAgent: String = {
     #endif
     let systemVersion = ProcessInfo.processInfo.operatingSystemVersion
     components.append("\(system)/\(systemVersion.majorVersion).\(systemVersion.minorVersion).\(systemVersion.patchVersion)")
-    
+
     let chip: String
     #if arch(x86_64)
         chip = "x86_64"
@@ -57,70 +57,70 @@ let userAgent: String = {
         chip = "unrecognized"
     #endif
     components.append("(\(chip))")
-    
+
     return components.joined(separator: " ")
 }()
 
 /**
  A `Directions` object provides you with optimal directions between different locations, or waypoints. The directions object passes your request to the [Mapbox Directions API](https://docs.mapbox.com/api/navigation/#directions) and returns the requested information to a closure (block) that you provide. A directions object can handle multiple simultaneous requests. A `RouteOptions` object specifies criteria for the results, such as intermediate waypoints, a mode of transportation, or the level of detail to be returned.
- 
+
  Each result produced by the directions object is stored in a `Route` object. Depending on the `RouteOptions` object you provide, each route may include detailed information suitable for turn-by-turn directions, or it may include only high-level information such as the distance, estimated travel time, and name of each leg of the trip. The waypoints that form the request may be conflated with nearby locations, as appropriate; the resulting waypoints are provided to the closure.
  */
 open class Directions: NSObject {
-    
+
     /**
      A tuple type representing the direction session that was generated from the request.
-     
+
      - parameter options: A `DirectionsOptions ` object representing the request parameter options.
-     
+
      - parameter credentials: A object containing the credentials used to make the request.
      */
     public typealias Session = (options: DirectionsOptions, credentials: Credentials)
-    
+
     /**
      A closure (block) to be called when a directions request is complete.
-     
+
      - parameter session: A `Directions.Session` object containing session information
-     
+
      - parameter result: A `Result` enum that represents the `RouteResponse` if the request returned successfully, or the error if it did not.
      */
     public typealias RouteCompletionHandler = (_ session: Session, _ result: Result<RouteResponse, DirectionsError>) -> Void
-    
+
     /**
      A closure (block) to be called when a map matching request is complete.
-     
+
      - parameter session: A `Directions.Session` object containing session information
-     
+
      - parameter result: A `Result` enum that represents the `MapMatchingResponse` if the request returned successfully, or the error if it did not.
      */
     public typealias MatchCompletionHandler = (_ session: Session, _ result: Result<MapMatchingResponse, DirectionsError>) -> Void
-    
+
     /**
      A closure (block) to be called when a directions refresh request is complete.
-     
+
      - parameter credentials: An object containing the credentials used to make the request.
      - parameter result: A `Result` enum that represents the `RouteRefreshResponse` if the request returned successfully, or the error if it did not.
-     
+
      - postcondition: To update the original route, pass `RouteRefreshResponse.route` into the `Route.refreshLegAttributes(from:)` method.
      */
     public typealias RouteRefreshCompletionHandler = (_ credentials: Credentials, _ result: Result<RouteRefreshResponse, DirectionsError>) -> Void
-    
+
     // MARK: Creating a Directions Object
-    
+
     /**
      The shared directions object.
-     
+
      To use this object, a Mapbox [access token](https://docs.mapbox.com/help/glossary/access-token/) should be specified in the `MBXAccessToken` key in the main application bundle’s Info.plist.
      */
     public static let shared = Directions()
 
     /**
      The Authorization & Authentication credentials that are used for this service.
-     
+
      If nothing is provided, the default behavior is to read credential values from the developer's Info.plist.
      */
     public let credentials: Credentials
-    
+
     private var authenticationParams: [URLQueryItem] {
         var params: [URLQueryItem] = [
             URLQueryItem(name: "access_token", value: credentials.accessToken)
@@ -149,54 +149,220 @@ open class Directions: NSObject {
         self.urlSession = urlSession
         self.processingQueue = processingQueue
     }
-    
-    
+
+
     // MARK: Getting Directions
-    
+
     /**
      Begins asynchronously calculating routes using the given options and delivers the results to a closure.
-     
+
      This method retrieves the routes asynchronously from the [Mapbox Directions API](https://www.mapbox.com/api-documentation/navigation/#directions) over a network connection. If a connection error or server error occurs, details about the error are passed into the given completion handler in lieu of the routes.
-     
+
      Routes may be displayed atop a [Mapbox map](https://www.mapbox.com/maps/).
-     
+
      - parameter options: A `RouteOptions` object specifying the requirements for the resulting routes.
      - parameter completionHandler: The closure (block) to call with the resulting routes. This closure is executed on the application’s main thread.
      - returns: The data task used to perform the HTTP request. If, while waiting for the completion handler to execute, you no longer want the resulting routes, cancel this task.
      */
-    @discardableResult open func calculate(_ options: RouteOptions, completionHandler: @escaping RouteCompletionHandler) -> URLSessionDataTask {
+
+     @discardableResult open func getJSONString (jsonResult: Dictionary<String, Any>) -> String{
+
+        var JSONString = "{}"
+        do{
+            let jsonData = try JSONSerialization.data(withJSONObject: jsonResult, options: JSONSerialization.WritingOptions.prettyPrinted)
+            let jsonString = String.init(data: jsonData, encoding: String.Encoding.utf8)
+            JSONString = jsonString!
+        }
+        catch {
+            print(error.localizedDescription)
+        }
+        return JSONString
+
+    }
+
+    @discardableResult open func getJSON(_ start: CLLocationCoordinate2D, end: CLLocationCoordinate2D, osrmPath: String) -> Dictionary<String, Any> {
+
+        let routeService = RouteService.init(mapData: osrmPath)
+
+        routeService?.overview = .full
+        routeService?.geometries = .polyline6
+        routeService?.steps = true
+        let jsonResult = routeService?.getRoutesFrom(start, to: end)
+
+        var newroutes = [Dictionary<String, Any>]()
+
+        for r in jsonResult!["routes"] as! [Dictionary<String, Any>]{
+            var route = r
+            route["voiceLocal"] = "en-US"
+            var newlegs = [Dictionary<String, Any>]()
+            for leg in route["legs"] as! [Dictionary<String, Any>]{
+                var newsteps = [Dictionary<String, Any>]()
+                for step in leg["steps"] as! [Dictionary<String, Any>]{
+                    var voiceInstructions = [Dictionary<String, Any>]()
+                    var voiceObject = Dictionary<String, Any>()
+                    var bannerInstructions = [Dictionary<String, Any>]()
+                    var bannerObject = Dictionary<String, Any>()
+                    var primary = Dictionary<String, Any>()
+                    var components = [Dictionary<String, Any>]()
+                    var component = Dictionary<String, Any>()
+
+                    let dis = step["distance"]
+
+                    //                    let osrminstructionFormatter = OSRMInstructionFormatter.init(version: "v5")
+
+                    let this_step = RouteStep.init(json: step, options: globalOptions!)
+
+                    //                    let instruction = osrminstructionFormatter.string(for: this_step)
+                    let instruction = this_step.instructions
+
+
+                    let msg = "<speak><amazon:effect name=\"drc\"><prosody rate=\"1.08\">" + instruction + "</prosody></amazon:effect></speak>"
+                    voiceObject["distanceAlongGeometry"] = dis
+                    voiceObject["announcement"] = instruction
+                    voiceObject["ssmlAnnouncement"] = msg
+                    voiceInstructions.append(voiceObject)
+
+                    var newstep = step
+
+                    var maneuver = newstep["maneuver"] as! Dictionary<String, Any>
+                    maneuver["instruction"] = instruction
+                    component["text"] = step["name"]
+                    component["type"] = "text"
+                    component["abbr"] = step["name"]
+                    component["abbr_priority"] = 0
+                    components.append(component)
+                    primary["text"] = step["name"]
+                    primary["components"] = components
+                    primary["type"] = maneuver["type"]
+                    primary["modifier"] = maneuver["modifier"]
+                    bannerObject["distanceAlongGeometry"] = dis
+                    bannerObject["primary"] = primary
+                    bannerObject["secondary"] = nil
+                    bannerInstructions.append(bannerObject)
+
+                    newstep["maneuver"] = maneuver
+                    newstep["bannerInstructions"] = bannerInstructions
+                    newstep["voiceInstructions"] = voiceInstructions
+                    newsteps.append(newstep)
+
+                }
+                var newleg = leg
+                newleg["steps"] = newsteps
+                newlegs.append(newleg)
+            }
+            route["legs"] = newlegs
+            newroutes.append(route)
+        }
+        var newjsonResult = jsonResult
+        newjsonResult!["routes"] = newroutes as NSObject
+
+        return newjsonResult!
+    }
+
+
+     @objc(calculateDirectionsWithOptions:osrmPath:completionHandler:)
+    @discardableResult open func calculate(_ options: RouteOptions, osrmPath: String? = nil, completionHandler: @escaping RouteCompletionHandler) -> URLSessionDataTask {
+        let fetchStartDate = Date()
+        if globalOptions == nil{
+            globalOptions = options
+        }
+        if globalOSRMPath == nil{
+            globalOSRMPath = osrmPath
+        }
+        let task = dataTask(forCalculating: options, completionHandler: { (json) in
+            let responseEndDate = Date()
+            let response = options.response(from: json)
+            if let routes = response.1 {
+                self.postprocess(routes, fetchStartDate: fetchStartDate, responseEndDate: responseEndDate, uuid: json["uuid"] as? String)
+            }
+            completionHandler(response.0, response.1, nil)
+
+        }) { (error) in
+            if globalOSRMPath == nil{
+                completionHandler(nil, nil, nil)
+            }
+            else{
+                let start = options.waypoints[0].coordinate
+                let end = options.waypoints[1].coordinate
+                let jsonResult = self.getJSON(start, end: end, osrmPath: globalOSRMPath!)
+
+                let JSONString = self.getJSONString(jsonResult: jsonResult)
+                print(JSONString)
+                var json: JSONDictionary = [:]
+
+                //                    do {
+                ////                        json = try JSONSerialization.jsonObject(with: , options: []) as! JSONDictionary
+                //                        json = try JSONSerialization.jsonObject(with: JSONString, options: <#T##JSONSerialization.ReadingOptions#>)
+                //                    } catch {
+                //                        assert(false, "Invalid data")
+                //                    }
+                do{
+                    let jsonData = try JSONSerialization.data(withJSONObject: jsonResult, options: JSONSerialization.WritingOptions.prettyPrinted)
+                    json = try JSONSerialization.jsonObject(with: jsonData, options: []) as! JSONDictionary
+                    let internalResponse = options.response(from: json)
+                    if let routes = internalResponse.1 {
+                        for route in routes {
+                            route.accessToken = self.accessToken
+                            route.apiEndpoint = self.apiEndpoint
+                            route.routeIdentifier = json["uuid"] as? String
+                        }
+                    }
+                    print("internalResponse0:")
+                    print(internalResponse.0)
+                    print("internalResponse1:")
+                    print(internalResponse.1)
+                    completionHandler(internalResponse.0, internalResponse.1, nil)
+
+                }
+                catch {
+                    print(error.localizedDescription)
+                    completionHandler(nil, nil, nil)
+                }
+
+
+                //                NSArray<MBRoute *> * _Nullable routes = [jsonResult valueForKeyPath:@"routes"];
+                //                let routes = jsonResult["routes"] as! [Route]
+                //                completionHandler(options.waypoints, routes, nil)
+            }
+            // completionHandler(nil, nil, error)
+        }
+        task.resume()
+        return task
+    }
+
+    // @discardableResult open func calculate(_ options: RouteOptions, completionHandler: @escaping RouteCompletionHandler) -> URLSessionDataTask {
         options.fetchStartDate = Date()
         let session = (options: options as DirectionsOptions, credentials: self.credentials)
         let request = urlRequest(forCalculating: options)
         let requestTask = urlSession.dataTask(with: request) { (possibleData, possibleResponse, possibleError) in
-            
+
             if let urlError = possibleError as? URLError {
                 DispatchQueue.main.async {
                     completionHandler(session, .failure(.network(urlError)))
                 }
                 return
             }
-            
+
             guard let response = possibleResponse, ["application/json", "text/html"].contains(response.mimeType) else {
                 DispatchQueue.main.async {
                     completionHandler(session, .failure(.invalidResponse(possibleResponse)))
                 }
                 return
             }
-            
+
             guard let data = possibleData else {
                 DispatchQueue.main.async {
                     completionHandler(session, .failure(.noData))
                 }
                 return
             }
-            
+
             self.processingQueue.async {
                 do {
                     let decoder = JSONDecoder()
                     decoder.userInfo = [.options: options,
                                         .credentials: self.credentials]
-                    
+
                     guard let disposition = try? decoder.decode(ResponseDisposition.self, from: data) else {
                         let apiError = DirectionsError(code: nil, message: nil, response: possibleResponse, underlyingError: possibleError)
 
@@ -205,7 +371,7 @@ open class Directions: NSObject {
                         }
                         return
                     }
-                    
+
                     guard (disposition.code == nil && disposition.message == nil) || disposition.code == "Ok" else {
                         let apiError = DirectionsError(code: disposition.code, message: disposition.message, response: response, underlyingError: possibleError)
                         DispatchQueue.main.async {
@@ -213,7 +379,7 @@ open class Directions: NSObject {
                         }
                         return
                     }
-                    
+
                     let result = try decoder.decode(RouteResponse.self, from: data)
                     guard result.routes != nil else {
                         DispatchQueue.main.async {
@@ -221,7 +387,7 @@ open class Directions: NSObject {
                         }
                         return
                     }
-                    
+
                     DispatchQueue.main.async {
                         completionHandler(session, .success(result))
                     }
@@ -235,17 +401,17 @@ open class Directions: NSObject {
         }
         requestTask.priority = 1
         requestTask.resume()
-        
+
         return requestTask
     }
-    
+
     /**
      Begins asynchronously calculating matches using the given options and delivers the results to a closure.
-     
+
      This method retrieves the matches asynchronously from the [Mapbox Map Matching API](https://docs.mapbox.com/api/navigation/#map-matching) over a network connection. If a connection error or server error occurs, details about the error are passed into the given completion handler in lieu of the routes.
-     
+
      To get `Route`s based on these matches, use the `calculateRoutes(matching:completionHandler:)` method instead.
-     
+
      - parameter options: A `MatchOptions` object specifying the requirements for the resulting matches.
      - parameter completionHandler: The closure (block) to call with the resulting matches. This closure is executed on the application’s main thread.
      - returns: The data task used to perform the HTTP request. If, while waiting for the completion handler to execute, you no longer want the resulting matches, cancel this task.
@@ -255,30 +421,30 @@ open class Directions: NSObject {
         let session = (options: options as DirectionsOptions, credentials: self.credentials)
         let request = urlRequest(forCalculating: options)
         let requestTask = urlSession.dataTask(with: request) { (possibleData, possibleResponse, possibleError) in
-            
+
             if let urlError = possibleError as? URLError {
                 DispatchQueue.main.async {
                     completionHandler(session, .failure(.network(urlError)))
                 }
                 return
             }
-            
+
             guard let response = possibleResponse, response.mimeType == "application/json" else {
                 DispatchQueue.main.async {
                     completionHandler(session, .failure(.invalidResponse(possibleResponse)))
-                    
+
                 }
                 return
             }
-            
+
             guard let data = possibleData else {
                 DispatchQueue.main.async {
                     completionHandler(session, .failure(.noData))
                 }
                 return
             }
-            
-            
+
+
             self.processingQueue.async {
                 do {
                     let decoder = JSONDecoder()
@@ -291,7 +457,7 @@ open class Directions: NSObject {
                           }
                           return
                       }
-                      
+
                       guard disposition.code == "Ok" else {
                           let apiError = DirectionsError(code: disposition.code, message: disposition.message, response: response, underlyingError: possibleError)
                           DispatchQueue.main.async {
@@ -299,16 +465,16 @@ open class Directions: NSObject {
                           }
                           return
                       }
-                    
+
                     let response = try decoder.decode(MapMatchingResponse.self, from: data)
-                    
+
                     guard response.matches != nil else {
                         DispatchQueue.main.async {
                             completionHandler(session, .failure(.unableToRoute))
                         }
                         return
                     }
-                                        
+
                     DispatchQueue.main.async {
                         completionHandler(session, .success(response))
                     }
@@ -322,17 +488,17 @@ open class Directions: NSObject {
         }
         requestTask.priority = 1
         requestTask.resume()
-        
+
         return requestTask
     }
-    
+
     /**
      Begins asynchronously calculating routes that match the given options and delivers the results to a closure.
-     
+
      This method retrieves the routes asynchronously from the [Mapbox Map Matching API](https://docs.mapbox.com/api/navigation/#map-matching) over a network connection. If a connection error or server error occurs, details about the error are passed into the given completion handler in lieu of the routes.
-     
+
      To get the `Match`es that these routes are based on, use the `calculate(_:completionHandler:)` method instead.
-     
+
      - parameter options: A `MatchOptions` object specifying the requirements for the resulting match.
      - parameter completionHandler: The closure (block) to call with the resulting routes. This closure is executed on the application’s main thread.
      - returns: The data task used to perform the HTTP request. If, while waiting for the completion handler to execute, you no longer want the resulting routes, cancel this task.
@@ -342,35 +508,35 @@ open class Directions: NSObject {
         let session = (options: options as DirectionsOptions, credentials: self.credentials)
         let request = urlRequest(forCalculating: options)
         let requestTask = urlSession.dataTask(with: request) { (possibleData, possibleResponse, possibleError) in
-            
+
              if let urlError = possibleError as? URLError {
                  DispatchQueue.main.async {
                     completionHandler(session, .failure(.network(urlError)))
                  }
                  return
              }
-            
+
             guard let response = possibleResponse, ["application/json", "text/html"].contains(response.mimeType) else  {
                 DispatchQueue.main.async {
                     completionHandler(session, .failure(.invalidResponse(possibleResponse)))
                 }
                 return
             }
-            
+
             guard let data = possibleData else {
                 DispatchQueue.main.async {
                     completionHandler(session, .failure(.noData))
                 }
                 return
             }
-            
+
             self.processingQueue.async {
                 do {
                     let decoder = JSONDecoder()
                     decoder.userInfo = [.options: options,
                                         .credentials: self.credentials]
-                    
-                    
+
+
                     guard let disposition = try? decoder.decode(ResponseDisposition.self, from: data) else {
                         let apiError = DirectionsError(code: nil, message: nil, response: possibleResponse, underlyingError: possibleError)
                         DispatchQueue.main.async {
@@ -378,7 +544,7 @@ open class Directions: NSObject {
                         }
                         return
                     }
-                    
+
                     guard disposition.code == "Ok" else {
                         let apiError = DirectionsError(code: disposition.code, message: disposition.message, response: response, underlyingError: possibleError)
                         DispatchQueue.main.async {
@@ -386,9 +552,9 @@ open class Directions: NSObject {
                         }
                         return
                     }
-                    
+
                     let result = try decoder.decode(MapMatchingResponse.self, from: data)
-                    
+
                     let routeResponse = try RouteResponse(matching: result, options: options, credentials: self.credentials)
                     guard routeResponse.routes != nil else {
                         DispatchQueue.main.async {
@@ -396,7 +562,7 @@ open class Directions: NSObject {
                         }
                         return
                     }
-                    
+
                     DispatchQueue.main.async {
                         completionHandler(session, .success(routeResponse))
                     }
@@ -410,17 +576,17 @@ open class Directions: NSObject {
         }
         requestTask.priority = 1
         requestTask.resume()
-        
+
         return requestTask
     }
-    
+
     /**
      Begins asynchronously refreshing the route with the given identifier, optionally starting from an arbitrary leg along the route.
-     
+
      This method retrieves skeleton route data asynchronously from the Mapbox Directions Refresh API over a network connection. If a connection error or server error occurs, details about the error are passed into the given completion handler in lieu of the routes.
-     
+
      - precondition: Set `RouteOptions.refreshingEnabled` to `true` when calculating the original route.
-     
+
      - parameter responseIdentifier: The `RouteResponse.identifier` value of the `RouteResponse` that contains the route to refresh.
      - parameter routeIndex: The index of the route to refresh in the original `RouteResponse.routes` array.
      - parameter startLegIndex: The index of the leg in the route at which to begin refreshing. The response will omit any leg before this index and refresh any leg from this index to the end of the route. If this argument is omitted, the entire route is refreshed.
@@ -437,21 +603,21 @@ open class Directions: NSObject {
                 }
                 return
             }
-            
+
             guard let response = possibleResponse, ["application/json", "text/html"].contains(response.mimeType) else {
                 DispatchQueue.main.async {
                     completionHandler(self.credentials, .failure(.invalidResponse(possibleResponse)))
                 }
                 return
             }
-            
+
             guard let data = possibleData else {
                 DispatchQueue.main.async {
                     completionHandler(self.credentials, .failure(.noData))
                 }
                 return
             }
-            
+
             self.processingQueue.async {
                 do {
                     let decoder = JSONDecoder()
@@ -461,7 +627,7 @@ open class Directions: NSObject {
                         .startLegIndex: startLegIndex,
                         .credentials: self.credentials,
                     ]
-                    
+
                     guard let disposition = try? decoder.decode(ResponseDisposition.self, from: data) else {
                         let apiError = DirectionsError(code: nil, message: nil, response: possibleResponse, underlyingError: possibleError)
 
@@ -470,7 +636,7 @@ open class Directions: NSObject {
                         }
                         return
                     }
-                    
+
                     guard (disposition.code == nil && disposition.message == nil) || disposition.code == "Ok" else {
                         let apiError = DirectionsError(code: disposition.code, message: disposition.message, response: response, underlyingError: possibleError)
                         DispatchQueue.main.async {
@@ -478,9 +644,9 @@ open class Directions: NSObject {
                         }
                         return
                     }
-                    
+
                     let result = try decoder.decode(RouteRefreshResponse.self, from: data)
-                    
+
                     DispatchQueue.main.async {
                         completionHandler(self.credentials, .success(result))
                     }
@@ -496,7 +662,7 @@ open class Directions: NSObject {
         requestTask.resume()
         return requestTask
     }
-    
+
     open func urlRequest(forRefreshing responseIdentifier: String, routeIndex: Int, fromLegAtIndex startLegIndex: Int) -> URLRequest {
         let params: [URLQueryItem] = authenticationParams
 
@@ -506,7 +672,7 @@ open class Directions: NSObject {
         unparameterizedURL.appendPathComponent(String(startLegIndex))
         var components = URLComponents(url: unparameterizedURL, resolvingAgainstBaseURL: true)!
         components.queryItems = params
-        
+
         let getURL = components.url!
         var request = URLRequest(url: getURL)
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
@@ -514,23 +680,23 @@ open class Directions: NSObject {
     }
     /**
      The GET HTTP URL used to fetch the routes from the API.
-     
+
      After requesting the URL returned by this method, you can parse the JSON data in the response and pass it into the `Route.init(json:waypoints:profileIdentifier:)` initializer. Alternatively, you can use the `calculate(_:options:)` method, which automatically sends the request and parses the response.
-     
+
      - parameter options: A `DirectionsOptions` object specifying the requirements for the resulting routes.
      - returns: The URL to send the request to.
      */
     open func url(forCalculating options: DirectionsOptions) -> URL {
         return url(forCalculating: options, httpMethod: "GET")
     }
-    
+
     /**
      The HTTP URL used to fetch the routes from the API using the specified HTTP method.
-     
+
      The query part of the URL is generally suitable for GET requests. However, if the URL is exceptionally long, it may be more appropriate to send a POST request to a URL without the query part, relegating the query to the body of the HTTP request. Use the `urlRequest(forCalculating:)` method to get an HTTP request that is a GET or POST request as necessary.
-     
+
      After requesting the URL returned by this method, you can parse the JSON data in the response and pass it into the `Route.init(json:waypoints:profileIdentifier:)` initializer. Alternatively, you can use the `calculate(_:options:)` method, which automatically sends the request and parses the response.
-     
+
      - parameter options: A `DirectionsOptions` object specifying the requirements for the resulting routes.
      - parameter httpMethod: The HTTP method to use. The value of this argument should match the `URLRequest.httpMethod` of the request you send. Currently, only GET and POST requests are supported by the API.
      - returns: The URL to send the request to.
@@ -545,14 +711,14 @@ open class Directions: NSObject {
         components.queryItems = params
         return components.url!
     }
-    
+
     /**
      The HTTP request used to fetch the routes from the API.
-     
+
      The returned request is a GET or POST request as necessary to accommodate URL length limits.
-     
+
      After sending the request returned by this method, you can parse the JSON data in the response and pass it into the `Route.init(json:waypoints:profileIdentifier:)` initializer. Alternatively, you can use the `calculate(_:options:)` method, which automatically sends the request and parses the response.
-     
+
      - parameter options: A `DirectionsOptions` object specifying the requirements for the resulting routes.
      - returns: A GET or POST HTTP request to calculate the specified options.
      */
@@ -561,7 +727,7 @@ open class Directions: NSObject {
         var request = URLRequest(url: getURL)
         if getURL.absoluteString.count > MaximumURLLength {
             request.url = url(forCalculating: options, httpMethod: "POST")
-            
+
             let body = options.httpBody.data(using: .utf8)
             request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
             request.httpMethod = "POST"
@@ -580,7 +746,7 @@ public extension CodingUserInfoKey {
     static let httpResponse = CodingUserInfoKey(rawValue: "com.mapbox.directions.coding.httpResponse")!
     static let credentials = CodingUserInfoKey(rawValue: "com.mapbox.directions.coding.credentials")!
     static let tracepoints = CodingUserInfoKey(rawValue: "com.mapbox.directions.coding.tracepoints")!
-    
+
     static let responseIdentifier = CodingUserInfoKey(rawValue: "com.mapbox.directions.coding.responseIdentifier")!
     static let routeIndex = CodingUserInfoKey(rawValue: "com.mapbox.directions.coding.routeIndex")!
     static let startLegIndex = CodingUserInfoKey(rawValue: "com.mapbox.directions.coding.startLegIndex")!
