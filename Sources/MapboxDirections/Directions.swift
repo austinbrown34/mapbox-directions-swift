@@ -9,6 +9,9 @@ typealias JSONDictionary = [String: Any]
 public let MBDirectionsErrorDomain = "com.mapbox.directions.ErrorDomain"
 
 
+var globalOSRMPath: String?
+var globalOptions: RouteOptions?
+
 /// The user agent string for any HTTP requests performed directly within this library.
 let userAgent: String = {
     var components: [String] = []
@@ -131,6 +134,8 @@ open class Directions: NSObject {
         }
         return params
     }
+
+
 
     private let urlSession: URLSession
     private let processingQueue: DispatchQueue
@@ -260,7 +265,20 @@ open class Directions: NSObject {
     }
 
 
-     @objc(calculateDirectionsWithOptions:osrmPath:completionHandler:)
+    // MARK: Getting Directions
+
+    /**
+     Begins asynchronously calculating routes using the given options and delivers the results to a closure.
+
+     This method retrieves the routes asynchronously from the [Mapbox Directions API](https://www.mapbox.com/api-documentation/navigation/#directions) over a network connection. If a connection error or server error occurs, details about the error are passed into the given completion handler in lieu of the routes.
+
+     Routes may be displayed atop a [Mapbox map](https://www.mapbox.com/maps/). They may be cached but may not be stored permanently. To use the results in other contexts or store them permanently, [upgrade to a Mapbox enterprise plan](https://www.mapbox.com/navigation/#pricing).
+
+     - parameter options: A `RouteOptions` object specifying the requirements for the resulting routes.
+     - parameter completionHandler: The closure (block) to call with the resulting routes. This closure is executed on the application’s main thread.
+     - returns: The data task used to perform the HTTP request. If, while waiting for the completion handler to execute, you no longer want the resulting routes, cancel this task.
+     */
+    @objc(calculateDirectionsWithOptions:osrmPath:completionHandler:)
     @discardableResult open func calculate(_ options: RouteOptions, osrmPath: String? = nil, completionHandler: @escaping RouteCompletionHandler) -> URLSessionDataTask {
         let fetchStartDate = Date()
         if globalOptions == nil{
@@ -330,7 +348,7 @@ open class Directions: NSObject {
         return task
     }
 
-    // @discardableResult open func calculate(_ options: RouteOptions, completionHandler: @escaping RouteCompletionHandler) -> URLSessionDataTask {
+    @discardableResult open func calculate(_ options: RouteOptions, completionHandler: @escaping RouteCompletionHandler) -> URLSessionDataTask {
         options.fetchStartDate = Date()
         let session = (options: options as DirectionsOptions, credentials: self.credentials)
         let request = urlRequest(forCalculating: options)
