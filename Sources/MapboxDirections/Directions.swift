@@ -185,84 +185,84 @@ open class Directions: NSObject {
 
     }
 
-    @discardableResult open func getJSON(_ start: CLLocationCoordinate2D, end: CLLocationCoordinate2D, osrmPath: String) -> Dictionary<String, Any> {
-
-        let routeService = RouteService.init(mapData: osrmPath)
-
-        routeService?.overview = .full
-        routeService?.geometries = .polyline6
-        routeService?.steps = true
-        let jsonResult = routeService?.getRoutesFrom(start, to: end)
-
-        var newroutes = [Dictionary<String, Any>]()
-
-        for r in jsonResult!["routes"] as! [Dictionary<String, Any>]{
-            var route = r
-            route["voiceLocal"] = "en-US"
-            var newlegs = [Dictionary<String, Any>]()
-            for leg in route["legs"] as! [Dictionary<String, Any>]{
-                var newsteps = [Dictionary<String, Any>]()
-                for step in leg["steps"] as! [Dictionary<String, Any>]{
-                    var voiceInstructions = [Dictionary<String, Any>]()
-                    var voiceObject = Dictionary<String, Any>()
-                    var bannerInstructions = [Dictionary<String, Any>]()
-                    var bannerObject = Dictionary<String, Any>()
-                    var primary = Dictionary<String, Any>()
-                    var components = [Dictionary<String, Any>]()
-                    var component = Dictionary<String, Any>()
-
-                    let dis = step["distance"]
-
-                    //                    let osrminstructionFormatter = OSRMInstructionFormatter.init(version: "v5")
-
-                    let this_step = RouteStep.init(json: step, options: globalOptions!)
-
-                    //                    let instruction = osrminstructionFormatter.string(for: this_step)
-                    let instruction = this_step.instructions
-
-
-                    let msg = "<speak><amazon:effect name=\"drc\"><prosody rate=\"1.08\">" + instruction + "</prosody></amazon:effect></speak>"
-                    voiceObject["distanceAlongGeometry"] = dis
-                    voiceObject["announcement"] = instruction
-                    voiceObject["ssmlAnnouncement"] = msg
-                    voiceInstructions.append(voiceObject)
-
-                    var newstep = step
-
-                    var maneuver = newstep["maneuver"] as! Dictionary<String, Any>
-                    maneuver["instruction"] = instruction
-                    component["text"] = step["name"]
-                    component["type"] = "text"
-                    component["abbr"] = step["name"]
-                    component["abbr_priority"] = 0
-                    components.append(component)
-                    primary["text"] = step["name"]
-                    primary["components"] = components
-                    primary["type"] = maneuver["type"]
-                    primary["modifier"] = maneuver["modifier"]
-                    bannerObject["distanceAlongGeometry"] = dis
-                    bannerObject["primary"] = primary
-                    bannerObject["secondary"] = nil
-                    bannerInstructions.append(bannerObject)
-
-                    newstep["maneuver"] = maneuver
-                    newstep["bannerInstructions"] = bannerInstructions
-                    newstep["voiceInstructions"] = voiceInstructions
-                    newsteps.append(newstep)
-
-                }
-                var newleg = leg
-                newleg["steps"] = newsteps
-                newlegs.append(newleg)
-            }
-            route["legs"] = newlegs
-            newroutes.append(route)
-        }
-        var newjsonResult = jsonResult
-        newjsonResult!["routes"] = newroutes as NSObject
-
-        return newjsonResult!
-    }
+//    @discardableResult open func getJSON(_ start: CLLocationCoordinate2D, end: CLLocationCoordinate2D, osrmPath: String) -> Dictionary<String, Any> {
+//
+//        let routeService = RouteService.init(mapData: osrmPath)
+//
+//        routeService?.overview = .full
+//        routeService?.geometries = .polyline6
+//        routeService?.steps = true
+//        let jsonResult = routeService?.getRoutesFrom(start, to: end)
+//
+//        var newroutes = [Dictionary<String, Any>]()
+//
+//        for r in jsonResult!["routes"] as! [Dictionary<String, Any>]{
+//            var route = r
+//            route["voiceLocal"] = "en-US"
+//            var newlegs = [Dictionary<String, Any>]()
+//            for leg in route["legs"] as! [Dictionary<String, Any>]{
+//                var newsteps = [Dictionary<String, Any>]()
+//                for step in leg["steps"] as! [Dictionary<String, Any>]{
+//                    var voiceInstructions = [Dictionary<String, Any>]()
+//                    var voiceObject = Dictionary<String, Any>()
+//                    var bannerInstructions = [Dictionary<String, Any>]()
+//                    var bannerObject = Dictionary<String, Any>()
+//                    var primary = Dictionary<String, Any>()
+//                    var components = [Dictionary<String, Any>]()
+//                    var component = Dictionary<String, Any>()
+//
+//                    let dis = step["distance"]
+//
+//                    //                    let osrminstructionFormatter = OSRMInstructionFormatter.init(version: "v5")
+//
+//                    let this_step = RouteStep.init(json: step, options: globalOptions!)
+//
+//                    //                    let instruction = osrminstructionFormatter.string(for: this_step)
+//                    let instruction = this_step.instructions
+//
+//
+//                    let msg = "<speak><amazon:effect name=\"drc\"><prosody rate=\"1.08\">" + instruction + "</prosody></amazon:effect></speak>"
+//                    voiceObject["distanceAlongGeometry"] = dis
+//                    voiceObject["announcement"] = instruction
+//                    voiceObject["ssmlAnnouncement"] = msg
+//                    voiceInstructions.append(voiceObject)
+//
+//                    var newstep = step
+//
+//                    var maneuver = newstep["maneuver"] as! Dictionary<String, Any>
+//                    maneuver["instruction"] = instruction
+//                    component["text"] = step["name"]
+//                    component["type"] = "text"
+//                    component["abbr"] = step["name"]
+//                    component["abbr_priority"] = 0
+//                    components.append(component)
+//                    primary["text"] = step["name"]
+//                    primary["components"] = components
+//                    primary["type"] = maneuver["type"]
+//                    primary["modifier"] = maneuver["modifier"]
+//                    bannerObject["distanceAlongGeometry"] = dis
+//                    bannerObject["primary"] = primary
+//                    bannerObject["secondary"] = nil
+//                    bannerInstructions.append(bannerObject)
+//
+//                    newstep["maneuver"] = maneuver
+//                    newstep["bannerInstructions"] = bannerInstructions
+//                    newstep["voiceInstructions"] = voiceInstructions
+//                    newsteps.append(newstep)
+//
+//                }
+//                var newleg = leg
+//                newleg["steps"] = newsteps
+//                newlegs.append(newleg)
+//            }
+//            route["legs"] = newlegs
+//            newroutes.append(route)
+//        }
+//        var newjsonResult = jsonResult
+//        newjsonResult!["routes"] = newroutes as NSObject
+//
+//        return newjsonResult!
+//    }
 
 
     // MARK: Getting Directions
@@ -278,75 +278,75 @@ open class Directions: NSObject {
      - parameter completionHandler: The closure (block) to call with the resulting routes. This closure is executed on the application’s main thread.
      - returns: The data task used to perform the HTTP request. If, while waiting for the completion handler to execute, you no longer want the resulting routes, cancel this task.
      */
-    @objc(calculateDirectionsWithOptions:osrmPath:completionHandler:)
-    @discardableResult open func calculate(_ options: RouteOptions, osrmPath: String? = nil, completionHandler: @escaping RouteCompletionHandler) -> URLSessionDataTask {
-        let fetchStartDate = Date()
-        if globalOptions == nil{
-            globalOptions = options
-        }
-        if globalOSRMPath == nil{
-            globalOSRMPath = osrmPath
-        }
-        let task = dataTask(forCalculating: options, completionHandler: { (json) in
-            let responseEndDate = Date()
-            let response = options.response(from: json)
-            if let routes = response.1 {
-                self.postprocess(routes, fetchStartDate: fetchStartDate, responseEndDate: responseEndDate, uuid: json["uuid"] as? String)
-            }
-            completionHandler(response.0, response.1, nil)
-
-        }) { (error) in
-            if globalOSRMPath == nil{
-                completionHandler(nil, nil, nil)
-            }
-            else{
-                let start = options.waypoints[0].coordinate
-                let end = options.waypoints[1].coordinate
-                let jsonResult = self.getJSON(start, end: end, osrmPath: globalOSRMPath!)
-
-                let JSONString = self.getJSONString(jsonResult: jsonResult)
-                print(JSONString)
-                var json: JSONDictionary = [:]
-
-                //                    do {
-                ////                        json = try JSONSerialization.jsonObject(with: , options: []) as! JSONDictionary
-                //                        json = try JSONSerialization.jsonObject(with: JSONString, options: <#T##JSONSerialization.ReadingOptions#>)
-                //                    } catch {
-                //                        assert(false, "Invalid data")
-                //                    }
-                do{
-                    let jsonData = try JSONSerialization.data(withJSONObject: jsonResult, options: JSONSerialization.WritingOptions.prettyPrinted)
-                    json = try JSONSerialization.jsonObject(with: jsonData, options: []) as! JSONDictionary
-                    let internalResponse = options.response(from: json)
-                    if let routes = internalResponse.1 {
-                        for route in routes {
-                            route.accessToken = self.accessToken
-                            route.apiEndpoint = self.apiEndpoint
-                            route.routeIdentifier = json["uuid"] as? String
-                        }
-                    }
-                    print("internalResponse0:")
-                    print(internalResponse.0)
-                    print("internalResponse1:")
-                    print(internalResponse.1)
-                    completionHandler(internalResponse.0, internalResponse.1, nil)
-
-                }
-                catch {
-                    print(error.localizedDescription)
-                    completionHandler(nil, nil, nil)
-                }
-
-
-                //                NSArray<MBRoute *> * _Nullable routes = [jsonResult valueForKeyPath:@"routes"];
-                //                let routes = jsonResult["routes"] as! [Route]
-                //                completionHandler(options.waypoints, routes, nil)
-            }
-            // completionHandler(nil, nil, error)
-        }
-        task.resume()
-        return task
-    }
+//    @objc(calculateDirectionsWithOptions:osrmPath:completionHandler:)
+//    @discardableResult open func calculate(_ options: RouteOptions, osrmPath: String? = nil, completionHandler: @escaping RouteCompletionHandler) -> URLSessionDataTask {
+//        let fetchStartDate = Date()
+//        if globalOptions == nil{
+//            globalOptions = options
+//        }
+//        if globalOSRMPath == nil{
+//            globalOSRMPath = osrmPath
+//        }
+//        let task = dataTask(forCalculating: options, completionHandler: { (json) in
+//            let responseEndDate = Date()
+//            let response = options.response(from: json)
+//            if let routes = response.1 {
+//                self.postprocess(routes, fetchStartDate: fetchStartDate, responseEndDate: responseEndDate, uuid: json["uuid"] as? String)
+//            }
+//            completionHandler(response.0, response.1, nil)
+//
+//        }) { (error) in
+//            if globalOSRMPath == nil{
+//                completionHandler(nil, nil, nil)
+//            }
+//            else{
+//                let start = options.waypoints[0].coordinate
+//                let end = options.waypoints[1].coordinate
+//                let jsonResult = self.getJSON(start, end: end, osrmPath: globalOSRMPath!)
+//
+//                let JSONString = self.getJSONString(jsonResult: jsonResult)
+//                print(JSONString)
+//                var json: JSONDictionary = [:]
+//
+//                //                    do {
+//                ////                        json = try JSONSerialization.jsonObject(with: , options: []) as! JSONDictionary
+//                //                        json = try JSONSerialization.jsonObject(with: JSONString, options: <#T##JSONSerialization.ReadingOptions#>)
+//                //                    } catch {
+//                //                        assert(false, "Invalid data")
+//                //                    }
+//                do{
+//                    let jsonData = try JSONSerialization.data(withJSONObject: jsonResult, options: JSONSerialization.WritingOptions.prettyPrinted)
+//                    json = try JSONSerialization.jsonObject(with: jsonData, options: []) as! JSONDictionary
+//                    let internalResponse = options.response(from: json)
+//                    if let routes = internalResponse.1 {
+//                        for route in routes {
+//                            route.accessToken = self.accessToken
+//                            route.apiEndpoint = self.apiEndpoint
+//                            route.routeIdentifier = json["uuid"] as? String
+//                        }
+//                    }
+//                    print("internalResponse0:")
+//                    print(internalResponse.0)
+//                    print("internalResponse1:")
+//                    print(internalResponse.1)
+//                    completionHandler(internalResponse.0, internalResponse.1, nil)
+//
+//                }
+//                catch {
+//                    print(error.localizedDescription)
+//                    completionHandler(nil, nil, nil)
+//                }
+//
+//
+//                //                NSArray<MBRoute *> * _Nullable routes = [jsonResult valueForKeyPath:@"routes"];
+//                //                let routes = jsonResult["routes"] as! [Route]
+//                //                completionHandler(options.waypoints, routes, nil)
+//            }
+//            // completionHandler(nil, nil, error)
+//        }
+//        task.resume()
+//        return task
+//    }
 
     @discardableResult open func calculate(_ options: RouteOptions, completionHandler: @escaping RouteCompletionHandler) -> URLSessionDataTask {
         options.fetchStartDate = Date()
